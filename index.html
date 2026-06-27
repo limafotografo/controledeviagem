@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Despesas · Maringá → Belo Horizonte</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --olive:#6B7A3F; --olive-lt:#8A9B52; --terra:#C4714A; --sand:#D4B896;
+    --cream:#F5F0E8; --cream-dk:#EDE7D9; --ink:#2A2A22; --muted:#7A7668;
+    --white:#FDFBF7; --danger:#B94040; --etanol:#2A7A3A; --gasolina:#1A4F8A;
+    --radius:10px; --shadow:0 2px 12px rgba(42,42,34,.10);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding-bottom:80px}
+
+  header{background:var(--olive);color:var(--white);padding:18px 20px 14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(42,42,34,.2)}
+  header .route{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sand);margin-bottom:3px}
+  header h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:700}
+  header .subtitle{font-size:11px;color:rgba(253,251,247,.6);margin-top:2px}
+
+  /* ALERTA SAVE */
+  .save-bar{background:#7A4A10;color:#fff;padding:10px 16px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .save-bar.ok{background:var(--etanol)}
+  .save-bar span{flex:1;line-height:1.4}
+  .save-bar button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .save-bar button:hover{background:rgba(255,255,255,.35)}
+
+  /* BACKUP BAR */
+  .backup-bar{display:flex;gap:8px;padding:10px 16px 0;align-items:center;flex-wrap:wrap}
+  .backup-bar .lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex:0 0 100%}
+  .btn-backup{flex:1;min-width:120px;padding:9px 10px;border-radius:var(--radius);border:1.5px solid var(--sand);background:var(--white);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:var(--shadow);transition:all .15s}
+  .btn-backup:hover{border-color:var(--olive);color:var(--olive)}
+  .btn-backup.destaque{background:var(--olive);border-color:var(--olive);color:#fff}
+  .btn-backup.destaque:hover{background:var(--olive-lt)}
+
+  /* KM PAINEL */
+  .km-painel{margin:12px 16px 0;background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .km-header{background:var(--ink);color:var(--white);padding:10px 16px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+  .km-header .toggle-ico{font-size:14px;transition:transform .2s}
+  .km-header.aberto .toggle-ico{transform:rotate(180deg)}
+  .km-body{padding:14px 16px;display:none}
+  .km-body.aberto{display:block}
+  .km-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .km-input-group label{display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .km-input-group input{width:100%;padding:9px 12px;border:1.5px solid var(--cream-dk);border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);background:var(--cream);outline:none}
+  .km-input-group input:focus{border-color:var(--olive)}
+  .km-resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--cream);border-radius:8px;padding:12px;margin-top:4px}
+  .km-stat{text-align:center}
+  .km-stat .val{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--olive)}
+  .km-stat .lbl{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* CONSUMO BANNER */
+  .consumo-banner{margin:10px 16px 0;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .consumo-grid{display:grid;grid-template-columns:1fr 1fr}
+  .consumo-card{padding:12px 14px}
+  .consumo-card.etanol{background:#E8F5E9}
+  .consumo-card.gasolina{background:#E8F0FF}
+  .consumo-card .c-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+  .consumo-card.etanol .c-label{color:var(--etanol)}
+  .consumo-card.gasolina .c-label{color:var(--gasolina)}
+  .consumo-card .c-val{font-family:'Playfair Display',serif;font-size:20px;font-weight:700}
+  .consumo-card.etanol .c-val{color:var(--etanol)}
+  .consumo-card.gasolina .c-val{color:var(--gasolina)}
+  .consumo-card .c-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* TOTAIS */
+  .totais-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px 16px 0}
+  .total-card{background:var(--white);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);border-left:3px solid var(--sand)}
+  .total-card.destaque{border-left-color:var(--terra)}
+  .total-card .label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .total-card .valor{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--ink)}
+  .total-card.destaque .valor{color:var(--terra)}
+  .total-card .qtd{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* FILTROS */
+  .filtros{display:flex;gap:8px;padding:12px 16px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .filtros::-webkit-scrollbar{display:none}
+  .filtro-btn{white-space:nowrap;padding:5px 13px;border-radius:20px;border:1.5px solid var(--sand);background:transparent;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .18s}
+  .filtro-btn.ativo{background:var(--olive);border-color:var(--olive);color:var(--white)}
+
+  /* LISTA */
+  .section-title{font-family:'Lora',serif;font-size:13px;font-weight:500;color:var(--muted);letter-spacing:.04em;padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center}
+  .lista{padding:0 16px;display:flex;flex-direction:column;gap:10px}
+  .despesa-item{background:var(--white);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:10px;animation:slideIn .2s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .despesa-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .icon-combustivel{background:#FFF0E0}.icon-pedagio{background:#E8F0FF}.icon-alimentacao{background:#E8F5E9}.icon-extra{background:#F5E8F5}
+  .despesa-info{flex:1;min-width:0}
+  .despesa-info .desc{font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .despesa-info .meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  .tag-combustivel{background:#FFF0E0;color:#B96A10}.tag-pedagio{background:#E8F0FF;color:#2B5DB4}.tag-alimentacao{background:#E8F5E9;color:#2A7A3A}.tag-extra{background:#F5E8F5;color:#8A3A8A}
+  .tag-etanol{background:#E8F5E9;color:var(--etanol)}.tag-gasolina{background:#E8F0FF;color:var(--gasolina)}
+  .km-badge{font-size:10px;color:var(--muted)}
+  .despesa-valor{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--terra);white-space:nowrap}
+  .consumo-badge{font-size:10px;color:var(--muted);text-align:right}
+  .btn-del{background:none;border:none;cursor:pointer;color:#ccc;font-size:15px;padding:2px 4px;transition:color .15s}
+  .btn-del:hover{color:var(--danger)}
+  .vazio{text-align:center;padding:36px 24px;color:var(--muted);font-size:13px;line-height:1.6}
+  .vazio .emoji{font-size:36px;margin-bottom:10px}
+
+  /* FAB */
+  .fab{position:fixed;bottom:24px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--terra);color:var(--white);border:none;cursor:pointer;font-size:26px;box-shadow:0 4px 18px rgba(196,113,74,.45);display:flex;align-items:center;justify-content:center;transition:transform .15s;z-index:200}
+  .fab:hover{transform:scale(1.08)}
+
+  /* MODAL */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(42,42,34,.5);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+  .overlay.open{display:flex}
+  .modal{background:var(--white);border-radius:18px 18px 0 0;padding:22px 20px 34px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;animation:slideUp .22s ease}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  .modal h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:16px}
+  .form-group{margin-bottom:13px}
+  .form-group label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .form-group input,.form-group select{width:100%;padding:10px 13px;border:1.5px solid var(--cream-dk);border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);background:var(--cream);outline:none;transition:border-color .15s}
+  .form-group input:focus,.form-group select:focus{border-color:var(--olive)}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cat-btn{padding:10px 4px;border-radius:8px;border:1.5px solid var(--cream-dk);background:var(--cream);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:600;color:var(--muted);transition:all .15s}
+  .cat-btn .ico{font-size:19px}
+  .cat-btn.sel{border-color:var(--olive);background:var(--olive);color:var(--white)}
+  .comb-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .comb-btn{padding:10px;border-radius:8px;border:1.5px solid var(--cream-dk);background:var(--cream);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:11px;font-weight:600;color:var(--muted);transition:all .15s}
+  .comb-btn.sel-etanol{border-color:var(--etanol);background:var(--etanol);color:#fff}
+  .comb-btn.sel-gasolina{border-color:var(--gasolina);background:var(--gasolina);color:#fff}
+  .extra-combustivel{display:none}
+  .extra-combustivel.show{display:block}
+  .divisor{height:1px;background:var(--cream-dk);margin:14px 0}
+  .btn-salvar{width:100%;padding:13px;background:var(--olive);color:var(--white);border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;transition:background .15s}
+  .btn-salvar:hover{background:var(--olive-lt)}
+  .btn-cancelar{width:100%;padding:11px;background:transparent;color:var(--muted);border:none;font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;margin-top:4px}
+
+  /* AÇÕES */
+  .bar-acoes{display:flex;gap:10px;padding:10px 16px 0}
+  .btn-rel{flex:1;padding:11px;border-radius:var(--radius);border:1.5px solid var(--olive);background:transparent;color:var(--olive);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+  .btn-rel:hover{background:var(--olive);color:var(--white)}
+
+  /* MODAL RELATÓRIO */
+  .modal-relatorio{background:var(--white);border-radius:18px 18px 0 0;padding:22px 20px 36px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;animation:slideUp .22s ease}
+  .rel-header{text-align:center;margin-bottom:18px}
+  .rel-header h2{font-family:'Playfair Display',serif;font-size:22px;color:var(--olive)}
+  .rel-header .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .rel-secao{margin-bottom:16px}
+  .rel-secao h3{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--cream-dk);margin-bottom:8px}
+  .rel-linha{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.06)}
+  .rel-linha .desc{color:var(--ink);max-width:65%}
+  .rel-linha .val{font-weight:600;color:var(--terra);white-space:nowrap}
+  .rel-linha-sub{font-size:10px;color:var(--muted);padding:1px 0 4px 0}
+  .rel-subtotal{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--olive);padding:8px 0 0;margin-top:2px}
+  .rel-km-box{background:var(--cream);border-radius:8px;padding:12px 14px;margin-bottom:14px}
+  .rel-km-box h3{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .rel-km-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+  .rel-km-item .v{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--olive)}
+  .rel-km-item .l{font-size:10px;color:var(--muted)}
+  .rel-consumo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .rel-consumo-card{padding:10px;border-radius:8px;text-align:center}
+  .rel-consumo-card.et{background:#E8F5E9}
+  .rel-consumo-card.gas{background:#E8F0FF}
+  .rel-consumo-card .cv{font-family:'Playfair Display',serif;font-size:17px;font-weight:700}
+  .rel-consumo-card.et .cv{color:var(--etanol)}
+  .rel-consumo-card.gas .cv{color:var(--gasolina)}
+  .rel-consumo-card .cl{font-size:10px;color:var(--muted);margin-top:2px}
+  .rel-total-final{background:var(--olive);color:var(--white);border-radius:var(--radius);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin:14px 0}
+  .rel-total-final .label{font-size:13px;font-weight:600}
+  .rel-total-final .valor{font-family:'Playfair Display',serif;font-size:24px;font-weight:700}
+  .btn-copiar{width:100%;padding:13px;background:var(--terra);color:var(--white);border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:opacity .15s}
+  .btn-copiar:hover{opacity:.9}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:opacity .25s;pointer-events:none;z-index:999}
+  .toast.show{opacity:1}
+  .info-nota{font-size:11px;color:var(--muted);background:var(--cream);border-radius:6px;padding:8px 10px;margin-top:8px;line-height:1.5}
+
+  /* LOADING */
+  .loading-overlay{position:fixed;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+  .loading-overlay .spin{width:32px;height:32px;border:3px solid var(--sand);border-top-color:var(--olive);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-overlay p{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spin"></div>
+  <p>Carregando dados salvos…</p>
+</div>
+
+<header>
+  <div class="route">Registro de Despesas · Viagem a Trabalho</div>
+  <h1>Edilson Lima Fotografia</h1>
+  <div class="subtitle" id="data-hoje"></div>
+</header>
+
+<!-- BARRA DE STATUS DO SAVE -->
+<div class="save-bar" id="save-bar">
+  <span id="save-msg">⚠️ Dados não salvos ainda. Exporte o backup após lançar suas despesas.</span>
+  <button onclick="exportarJSON()">💾 Salvar backup</button>
+</div>
+
+<!-- BACKUP / IMPORTAR -->
+<div class="backup-bar">
+  <div class="lbl">Backup dos dados</div>
+  <button class="btn-backup destaque" onclick="exportarJSON()">⬇️ Exportar .json</button>
+  <button class="btn-backup" onclick="document.getElementById('import-file').click()">⬆️ Importar .json</button>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarJSON(event)">
+</div>
+
+<!-- KM PAINEL -->
+<div class="km-painel">
+  <div class="km-header" id="km-toggle" onclick="toggleKm()">
+    <span>🛞 Hodômetro da Viagem</span>
+    <span class="toggle-ico">▼</span>
+  </div>
+  <div class="km-body" id="km-body">
+    <div class="km-grid">
+      <div class="km-input-group">
+        <label>KM Inicial (saída)</label>
+        <input type="number" id="km-ini" placeholder="Ex: 45000" oninput="salvarEstado();calcKm()">
+      </div>
+      <div class="km-input-group">
+        <label>KM Final (chegada)</label>
+        <input type="number" id="km-fin" placeholder="Ex: 46050" oninput="salvarEstado();calcKm()">
+      </div>
+    </div>
+    <div class="km-resumo">
+      <div class="km-stat"><div class="val" id="km-total">—</div><div class="lbl">KM Percorridos</div></div>
+      <div class="km-stat"><div class="val" id="km-litros">—</div><div class="lbl">Litros Total</div></div>
+      <div class="km-stat"><div class="val" id="km-custo-km">—</div><div class="lbl">Custo por KM</div></div>
+    </div>
+    <div class="info-nota">💡 Informe o KM do odômetro ao sair e ao chegar. O consumo real é calculado automaticamente a partir dos abastecimentos.</div>
+  </div>
+</div>
+
+<!-- BANNER CONSUMO -->
+<div class="consumo-banner" id="consumo-banner" style="display:none">
+  <div class="consumo-grid">
+    <div class="consumo-card etanol">
+      <div class="c-label">🌿 Etanol</div>
+      <div class="c-val" id="cons-et-km">— km/L</div>
+      <div class="c-sub" id="cons-et-sub">0 L · R$ 0,00</div>
+    </div>
+    <div class="consumo-card gasolina">
+      <div class="c-label">⛽ Gasolina</div>
+      <div class="c-val" id="cons-gas-km">— km/L</div>
+      <div class="c-sub" id="cons-gas-sub">0 L · R$ 0,00</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOTAIS -->
+<div class="totais-grid">
+  <div class="total-card"><div class="label">⛽ Combustível</div><div class="valor" id="t-combustivel">R$ 0,00</div><div class="qtd" id="q-combustivel">0 registros</div></div>
+  <div class="total-card"><div class="label">🛣️ Pedágios</div><div class="valor" id="t-pedagio">R$ 0,00</div><div class="qtd" id="q-pedagio">0 registros</div></div>
+  <div class="total-card"><div class="label">🍽️ Alimentação</div><div class="valor" id="t-alimentacao">R$ 0,00</div><div class="qtd" id="q-alimentacao">0 registros</div></div>
+  <div class="total-card destaque"><div class="label">💰 Total Geral</div><div class="valor" id="t-total">R$ 0,00</div><div class="qtd" id="q-total">0 despesas</div></div>
+</div>
+
+<div class="bar-acoes">
+  <button class="btn-rel" onclick="abrirRelatorio()">📄 Relatório</button>
+  <button class="btn-rel" onclick="limparTudo()" style="border-color:var(--danger);color:var(--danger)">🗑️ Limpar tudo</button>
+</div>
+
+<div class="filtros">
+  <button class="filtro-btn ativo" onclick="filtrar('todos',this)">Todos</button>
+  <button class="filtro-btn" onclick="filtrar('combustivel',this)">⛽ Combustível</button>
+  <button class="filtro-btn" onclick="filtrar('pedagio',this)">🛣️ Pedágio</button>
+  <button class="filtro-btn" onclick="filtrar('alimentacao',this)">🍽️ Alimentação</button>
+  <button class="filtro-btn" onclick="filtrar('extra',this)">📦 Extra</button>
+</div>
+
+<div class="section-title">
+  <span id="lista-label">Todas as despesas</span>
+  <span id="lista-count" style="color:var(--terra);font-size:12px"></span>
+</div>
+<div class="lista" id="lista"></div>
+
+<button class="fab" onclick="abrirModal()">+</button>
+
+<!-- MODAL ADICIONAR -->
+<div class="overlay" id="overlay-add" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <h2>Nova Despesa</h2>
+    <div class="form-group">
+      <label>Categoria</label>
+      <div class="cat-grid">
+        <button class="cat-btn sel" data-cat="combustivel" onclick="selCat(this)"><span class="ico">⛽</span>Combustível</button>
+        <button class="cat-btn" data-cat="pedagio" onclick="selCat(this)"><span class="ico">🛣️</span>Pedágio</button>
+        <button class="cat-btn" data-cat="alimentacao" onclick="selCat(this)"><span class="ico">🍽️</span>Alimentação</button>
+        <button class="cat-btn" data-cat="extra" onclick="selCat(this)"><span class="ico">📦</span>Extra</button>
+      </div>
+    </div>
+    <div class="extra-combustivel show" id="extra-comb">
+      <div class="divisor"></div>
+      <div class="form-group">
+        <label>Tipo de Combustível</label>
+        <div class="comb-grid">
+          <button class="comb-btn sel-etanol" id="btn-etanol" onclick="selComb('etanol')">🌿 Etanol</button>
+          <button class="comb-btn" id="btn-gasolina" onclick="selComb('gasolina')">⛽ Gasolina</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>KM no hodômetro</label>
+          <input type="number" id="inp-km" placeholder="Ex: 45230">
+        </div>
+        <div class="form-group">
+          <label>Litros abastecidos</label>
+          <input type="number" id="inp-litros" placeholder="Ex: 40,5" step="0.01" oninput="calcValorAuto()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Preço por litro (R$)</label>
+        <input type="number" id="inp-preco-litro" placeholder="Ex: 4,89" step="0.01" oninput="calcValorAuto()">
+      </div>
+      <div class="divisor"></div>
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="inp-desc" placeholder="Ex: Posto Ipiranga, Londrina">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Valor Total (R$)</label>
+        <input type="number" id="inp-valor" placeholder="0,00" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Data e Hora</label>
+        <input type="datetime-local" id="inp-data">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Local / Cidade</label>
+      <input type="text" id="inp-local" placeholder="Ex: Londrina – PR">
+    </div>
+    <button class="btn-salvar" onclick="salvarDespesa()">✔ Salvar Despesa</button>
+    <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL RELATÓRIO -->
+<div class="overlay" id="overlay-rel" onclick="fecharRelFora(event)">
+  <div class="modal-relatorio" id="modal-rel"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CATS = {
+  combustivel:{ label:'Combustível', icon:'⛽', tag:'tag-combustivel', ico:'icon-combustivel' },
+  pedagio:    { label:'Pedágio',     icon:'🛣️', tag:'tag-pedagio',     ico:'icon-pedagio' },
+  alimentacao:{ label:'Alimentação', icon:'🍽️', tag:'tag-alimentacao', ico:'icon-alimentacao' },
+  extra:      { label:'Extra',       icon:'📦', tag:'tag-extra',       ico:'icon-extra' },
+};
+
+let despesas = [];
+let kmIni = '', kmFin = '';
+let filtroAtivo = 'todos';
+let catSel = 'combustivel', combSel = 'etanol';
+let dadosAlterados = false;
+
+// ── PERSISTÊNCIA: tenta window.storage (artifact), cai no localStorage ──
+const store = {
+  async get(key) {
+    if (window.storage) {
+      try { const r = await window.storage.get(key); return r ? r.value : null; } catch(e){ return null; }
+    }
+    return localStorage.getItem(key);
+  },
+  async set(key, val) {
+    if (window.storage) {
+      try { await window.storage.set(key, val); return; } catch(e){}
+    }
+    localStorage.setItem(key, val);
+  }
+};
+
+async function carregarDados() {
+  try {
+    const d = await store.get('vdespesas');
+    despesas = d ? JSON.parse(d) : [];
+    kmIni = (await store.get('vkm-ini')) || '';
+    kmFin = (await store.get('vkm-fin')) || '';
+    if (kmIni) document.getElementById('km-ini').value = kmIni;
+    if (kmFin) document.getElementById('km-fin').value = kmFin;
+  } catch(e) {
+    despesas = []; kmIni = ''; kmFin = '';
+  }
+  document.getElementById('loading').style.display = 'none';
+  atualizarSaveBar();
+  toggleKm();
+  render();
+}
+
+async function salvarEstado() {
+  await store.set('vdespesas', JSON.stringify(despesas));
+  await store.set('vkm-ini', document.getElementById('km-ini').value);
+  await store.set('vkm-fin', document.getElementById('km-fin').value);
+  kmIni = document.getElementById('km-ini').value;
+  kmFin = document.getElementById('km-fin').value;
+  dadosAlterados = true;
+  atualizarSaveBar();
+}
+
+function atualizarSaveBar() {
+  const bar = document.getElementById('save-bar');
+  const msg = document.getElementById('save-msg');
+  if (despesas.length === 0) {
+    bar.className = 'save-bar';
+    msg.textContent = '⚠️ Nenhum lançamento ainda. Adicione despesas e exporte o backup.';
+  } else {
+    bar.className = 'save-bar';
+    msg.textContent = `⚠️ ${despesas.length} despesa(s) registrada(s). Exporte o backup para não perder!`;
+  }
+}
+
+// ── EXPORT / IMPORT JSON ──
+function exportarJSON() {
+  const payload = {
+    versao: '2.0',
+    exportadoEm: new Date().toISOString(),
+    app: 'Edilson Lima Fotografia · Controle de Despesas',
+    rota: 'Maringá (PR) → Belo Horizonte (MG)',
+    kmInicial: kmIni,
+    kmFinal: kmFin,
+    despesas: despesas,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  a.download = `despesas-viagem-${hoje}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const bar = document.getElementById('save-bar');
+  const msg = document.getElementById('save-msg');
+  bar.className = 'save-bar ok';
+  msg.textContent = `✔ Backup salvo com sucesso — ${despesas.length} despesa(s). Guarde o arquivo com segurança.`;
+  mostrarToast('Backup exportado ✔');
+}
+
+function importarJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.despesas || !Array.isArray(data.despesas)) throw new Error('Formato inválido');
+
+      const confirmar = confirm(
+        `Importar backup de ${data.exportadoEm ? new Date(data.exportadoEm).toLocaleString('pt-BR') : 'data desconhecida'}?\n\n` +
+        `${data.despesas.length} despesa(s) serão carregadas.\n\n` +
+        `Os dados atuais serão SUBSTITUÍDOS.`
+      );
+      if (!confirmar) return;
+
+      despesas = data.despesas;
+      if (data.kmInicial) { kmIni = data.kmInicial; document.getElementById('km-ini').value = kmIni; }
+      if (data.kmFinal)   { kmFin = data.kmFinal;   document.getElementById('km-fin').value = kmFin; }
+
+      await salvarEstado();
+      render();
+      mostrarToast(`${despesas.length} despesa(s) importadas ✔`);
+    } catch(err) {
+      alert('Arquivo inválido ou corrompido. Use um backup gerado por este app.');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── HELPERS ──
+function fmt(val) { return 'R$ '+Number(val).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtKm(v) { return v ? parseFloat(v).toLocaleString('pt-BR') : '—'; }
+function fmtData(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+document.getElementById('data-hoje').textContent =
+  new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+// ── CÁLCULOS KM ──
+function calcKm() {
+  const ini = parseFloat(document.getElementById('km-ini').value || kmIni);
+  const fin = parseFloat(document.getElementById('km-fin').value || kmFin);
+  const totalKm = (ini && fin && fin > ini) ? fin - ini : null;
+
+  const combItems = despesas.filter(d => d.cat === 'combustivel');
+  const litEt  = combItems.filter(d=>d.combTipo==='etanol').reduce((s,d)=>s+(d.litros||0),0);
+  const litGas = combItems.filter(d=>d.combTipo==='gasolina').reduce((s,d)=>s+(d.litros||0),0);
+  const litTotal = litEt + litGas;
+  const totalValComb = combItems.reduce((s,d)=>s+d.valor,0);
+
+  document.getElementById('km-total').textContent    = totalKm ? totalKm.toLocaleString('pt-BR')+' km' : '—';
+  document.getElementById('km-litros').textContent   = litTotal > 0 ? litTotal.toFixed(1)+' L' : '—';
+  document.getElementById('km-custo-km').textContent = (totalKm && totalValComb > 0)
+    ? 'R$ '+(totalValComb/totalKm).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+    : '—';
+
+  const banner = document.getElementById('consumo-banner');
+  if (combItems.length > 0) {
+    banner.style.display = 'block';
+    const valEt  = combItems.filter(d=>d.combTipo==='etanol').reduce((s,d)=>s+d.valor,0);
+    const valGas = combItems.filter(d=>d.combTipo==='gasolina').reduce((s,d)=>s+d.valor,0);
+    const consEt  = calcConsumoPorTipo('etanol',  totalKm, litTotal);
+    const consGas = calcConsumoPorTipo('gasolina', totalKm, litTotal);
+    document.getElementById('cons-et-km').textContent  = consEt  ? consEt.toFixed(1)+' km/L'  : '— km/L';
+    document.getElementById('cons-gas-km').textContent = consGas ? consGas.toFixed(1)+' km/L' : '— km/L';
+    document.getElementById('cons-et-sub').textContent  = litEt.toFixed(1)+' L · '+fmt(valEt);
+    document.getElementById('cons-gas-sub').textContent = litGas.toFixed(1)+' L · '+fmt(valGas);
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function calcConsumoPorTipo(tipo, totalKm, litTotal) {
+  const abast = despesas
+    .filter(d=>d.cat==='combustivel'&&d.combTipo===tipo&&d.km&&d.litros)
+    .sort((a,b)=>parseFloat(a.km)-parseFloat(b.km));
+  if (!abast.length) return null;
+  const litTipo = abast.reduce((s,d)=>s+(d.litros||0),0);
+  if (!litTipo) return null;
+  let kmPercorridos = 0, litUsados = 0;
+  if (abast.length >= 2) {
+    for (let i=1;i<abast.length;i++) {
+      const tr = parseFloat(abast[i].km)-parseFloat(abast[i-1].km);
+      if (tr>0) { kmPercorridos+=tr; litUsados+=abast[i].litros; }
+    }
+  }
+  if (kmPercorridos<=0 && totalKm && litTotal>0) {
+    kmPercorridos = totalKm*(litTipo/litTotal); litUsados = litTipo;
+  }
+  return (kmPercorridos>0&&litUsados>0) ? kmPercorridos/litUsados : null;
+}
+
+// ── RENDER ──
+function atualizarTotais() {
+  const calc = c => despesas.filter(d=>d.cat===c).reduce((s,d)=>s+d.valor,0);
+  const q    = c => despesas.filter(d=>d.cat===c).length;
+  document.getElementById('t-combustivel').textContent = fmt(calc('combustivel'));
+  document.getElementById('t-pedagio').textContent     = fmt(calc('pedagio'));
+  document.getElementById('t-alimentacao').textContent = fmt(calc('alimentacao'));
+  document.getElementById('q-combustivel').textContent = q('combustivel')+' registro(s)';
+  document.getElementById('q-pedagio').textContent     = q('pedagio')+' registro(s)';
+  document.getElementById('q-alimentacao').textContent = q('alimentacao')+' registro(s)';
+  const total = despesas.reduce((s,d)=>s+d.valor,0);
+  document.getElementById('t-total').textContent = fmt(total);
+  document.getElementById('q-total').textContent = despesas.length+' despesa(s)';
+}
+
+function renderLista() {
+  const lista = document.getElementById('lista');
+  let itens = filtroAtivo==='todos' ? despesas : despesas.filter(d=>d.cat===filtroAtivo);
+  itens = [...itens].reverse();
+  document.getElementById('lista-count').textContent = itens.length+' item(s)';
+  if (!itens.length) {
+    lista.innerHTML = `<div class="vazio"><div class="emoji">🧾</div>Nenhuma despesa ainda.<br>Toque em <b>+</b> para registrar.</div>`;
+    return;
+  }
+  lista.innerHTML = itens.map(d => {
+    const c = CATS[d.cat];
+    const isComb = d.cat==='combustivel';
+    const tipoTag = isComb && d.combTipo ? `<span class="tag tag-${d.combTipo}">${d.combTipo==='etanol'?'🌿 Etanol':'⛽ Gasolina'}</span>` : '';
+    const kmInfo  = isComb && d.km     ? `<span class="km-badge">📍 ${fmtKm(d.km)} km</span>` : '';
+    const litInfo = isComb && d.litros ? `<span class="km-badge">${parseFloat(d.litros).toFixed(1)} L</span>` : '';
+    const consInfo = isComb && d.km && d.litros && d.kmAnterior
+      ? `<div class="consumo-badge">${((parseFloat(d.km)-parseFloat(d.kmAnterior))/d.litros).toFixed(1)} km/L neste trecho</div>` : '';
+    return `
+      <div class="despesa-item">
+        <div class="despesa-icon ${c.ico}">${c.icon}</div>
+        <div class="despesa-info">
+          <div class="desc">${d.desc||c.label}</div>
+          <div class="meta">
+            <span class="tag ${c.tag}">${c.label}</span>
+            ${tipoTag}${kmInfo}${litInfo}
+            ${d.local?`<span>📍 ${d.local}</span>`:''}
+            ${d.data?`<span>🕐 ${fmtData(d.data)}</span>`:''}
+          </div>
+          ${consInfo}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div class="despesa-valor">${fmt(d.valor)}</div>
+          <button class="btn-del" onclick="excluir('${d.id}')">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function render() { atualizarTotais(); renderLista(); calcKm(); atualizarSaveBar(); }
+
+// ── FILTRO ──
+function filtrar(cat, btn) {
+  filtroAtivo = cat;
+  document.querySelectorAll('.filtro-btn').forEach(b=>b.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  const lbl = {todos:'Todas as despesas',combustivel:'Combustível',pedagio:'Pedágios',alimentacao:'Alimentação',extra:'Despesas extras'};
+  document.getElementById('lista-label').textContent = lbl[cat];
+  renderLista();
+}
+
+function toggleKm() {
+  document.getElementById('km-body').classList.toggle('aberto');
+  document.getElementById('km-toggle').classList.toggle('aberto');
+}
+
+// ── MODAL ADD ──
+function preencherDataHora() {
+  const agora = new Date();
+  agora.setMinutes(agora.getMinutes()-agora.getTimezoneOffset());
+  document.getElementById('inp-data').value = agora.toISOString().slice(0,16);
+}
+function abrirModal() {
+  preencherDataHora();
+  ['inp-desc','inp-valor','inp-local','inp-km','inp-litros','inp-preco-litro'].forEach(id=>document.getElementById(id).value='');
+  catSel='combustivel'; combSel='etanol';
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('sel'));
+  document.querySelector('[data-cat="combustivel"]').classList.add('sel');
+  document.getElementById('extra-comb').classList.add('show');
+  selComb('etanol');
+  document.getElementById('overlay-add').classList.add('open');
+}
+function fecharModal() { document.getElementById('overlay-add').classList.remove('open'); }
+function fecharModalFora(e) { if(e.target.id==='overlay-add') fecharModal(); }
+
+function selCat(btn) {
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel'); catSel = btn.dataset.cat;
+  const ex = document.getElementById('extra-comb');
+  catSel==='combustivel' ? ex.classList.add('show') : ex.classList.remove('show');
+}
+function selComb(tipo) {
+  combSel = tipo;
+  document.getElementById('btn-etanol').className   = 'comb-btn'+(tipo==='etanol'?' sel-etanol':'');
+  document.getElementById('btn-gasolina').className = 'comb-btn'+(tipo==='gasolina'?' sel-gasolina':'');
+}
+function calcValorAuto() {
+  const litros = parseFloat(document.getElementById('inp-litros').value);
+  const preco  = parseFloat(document.getElementById('inp-preco-litro').value);
+  if (litros>0 && preco>0) document.getElementById('inp-valor').value = (litros*preco).toFixed(2);
+}
+
+async function salvarDespesa() {
+  const valor = parseFloat(document.getElementById('inp-valor').value);
+  if (!valor || valor<=0) { mostrarToast('Informe um valor válido'); return; }
+  const d = {
+    id: Date.now().toString(),
+    cat: catSel,
+    desc: document.getElementById('inp-desc').value.trim() || CATS[catSel].label,
+    valor,
+    data: document.getElementById('inp-data').value,
+    local: document.getElementById('inp-local').value.trim(),
+  };
+  if (catSel==='combustivel') {
+    d.combTipo = combSel;
+    d.km       = document.getElementById('inp-km').value || null;
+    d.litros   = parseFloat(document.getElementById('inp-litros').value) || null;
+    d.precoL   = parseFloat(document.getElementById('inp-preco-litro').value) || null;
+    const anteriores = despesas.filter(x=>x.cat==='combustivel'&&x.combTipo===combSel&&x.km).sort((a,b)=>parseFloat(a.km)-parseFloat(b.km));
+    if (anteriores.length>0) d.kmAnterior = anteriores[anteriores.length-1].km;
+  }
+  despesas.push(d);
+  await salvarEstado();
+  render(); fecharModal();
+  mostrarToast('Despesa registrada ✔');
+}
+
+async function excluir(id) {
+  despesas = despesas.filter(d=>d.id!==id);
+  await salvarEstado(); render();
+  mostrarToast('Removida');
+}
+
+async function limparTudo() {
+  if (!confirm('Apagar TODAS as despesas e dados da viagem?')) return;
+  despesas = []; kmIni=''; kmFin='';
+  document.getElementById('km-ini').value='';
+  document.getElementById('km-fin').value='';
+  await salvarEstado(); render();
+  mostrarToast('Dados apagados');
+}
+
+function mostrarToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ── RELATÓRIO ──
+function abrirRelatorio() {
+  const modal = document.getElementById('modal-rel');
+  const agora = new Date().toLocaleString('pt-BR',{dateStyle:'long',timeStyle:'short'});
+  const ini   = parseFloat(kmIni);
+  const fin   = parseFloat(kmFin);
+  const totalKm = (ini&&fin&&fin>ini) ? fin-ini : null;
+  const combItems = despesas.filter(d=>d.cat==='combustivel');
+  const litEt  = combItems.filter(d=>d.combTipo==='etanol').reduce((s,d)=>s+(d.litros||0),0);
+  const litGas = combItems.filter(d=>d.combTipo==='gasolina').reduce((s,d)=>s+(d.litros||0),0);
+  const litTotal = litEt+litGas;
+  const valEt    = combItems.filter(d=>d.combTipo==='etanol').reduce((s,d)=>s+d.valor,0);
+  const valGas   = combItems.filter(d=>d.combTipo==='gasolina').reduce((s,d)=>s+d.valor,0);
+  const totalValComb = combItems.reduce((s,d)=>s+d.valor,0);
+  const consPorKm = totalKm&&totalValComb ? totalValComb/totalKm : null;
+  const consEt  = calcConsumoPorTipo('etanol',totalKm,litTotal);
+  const consGas = calcConsumoPorTipo('gasolina',totalKm,litTotal);
+
+  let kmBloco = '';
+  if (ini||fin||combItems.length) {
+    kmBloco = `
+      <div class="rel-km-box">
+        <h3>🛞 Hodômetro & Consumo</h3>
+        <div class="rel-km-grid">
+          <div class="rel-km-item"><div class="v">${ini?fmtKm(ini)+' km':'—'}</div><div class="l">KM Inicial</div></div>
+          <div class="rel-km-item"><div class="v">${fin?fmtKm(fin)+' km':'—'}</div><div class="l">KM Final</div></div>
+          <div class="rel-km-item"><div class="v">${totalKm?totalKm.toLocaleString('pt-BR')+' km':'—'}</div><div class="l">Total Percorrido</div></div>
+        </div>
+        <div class="rel-km-grid" style="margin-top:8px">
+          <div class="rel-km-item"><div class="v">${litTotal>0?litTotal.toFixed(1)+' L':'—'}</div><div class="l">Total Abastecido</div></div>
+          <div class="rel-km-item"><div class="v">${totalValComb>0?fmt(totalValComb):'—'}</div><div class="l">Custo Combustível</div></div>
+          <div class="rel-km-item"><div class="v">${consPorKm?'R$ '+consPorKm.toFixed(2)+'/km':'—'}</div><div class="l">Custo por KM</div></div>
+        </div>
+        <div class="rel-consumo-row">
+          <div class="rel-consumo-card et"><div class="cv">🌿 ${consEt?consEt.toFixed(1)+' km/L':'—'}</div><div class="cl">Etanol · ${litEt.toFixed(1)} L · ${fmt(valEt)}</div></div>
+          <div class="rel-consumo-card gas"><div class="cv">⛽ ${consGas?consGas.toFixed(1)+' km/L':'—'}</div><div class="cl">Gasolina · ${litGas.toFixed(1)} L · ${fmt(valGas)}</div></div>
+        </div>
+      </div>`;
+  }
+
+  const blocos = Object.entries(CATS).map(([key,c])=>{
+    const itens = despesas.filter(d=>d.cat===key);
+    if (!itens.length) return '';
+    const sub = itens.reduce((s,d)=>s+d.valor,0);
+    const linhas = itens.map(d=>{
+      let extra='';
+      if (d.cat==='combustivel') {
+        const p=[];
+        if(d.combTipo) p.push(d.combTipo==='etanol'?'🌿 Etanol':'⛽ Gasolina');
+        if(d.km) p.push(fmtKm(d.km)+' km');
+        if(d.litros) p.push(d.litros.toFixed(1)+' L');
+        if(d.precoL) p.push('R$ '+d.precoL.toFixed(3)+'/L');
+        if(p.length) extra=`<div class="rel-linha-sub">${p.join(' · ')}</div>`;
+      }
+      return `<div class="rel-linha"><span class="desc">${c.icon} ${d.desc}${d.local?' · '+d.local:''}</span><span class="val">${fmt(d.valor)}</span></div>${extra}`;
+    }).join('');
+    return `<div class="rel-secao"><h3>${c.icon} ${c.label}</h3>${linhas}<div class="rel-subtotal"><span>Subtotal</span><span>${fmt(sub)}</span></div></div>`;
+  }).join('');
+
+  const total = despesas.reduce((s,d)=>s+d.valor,0);
+  modal.innerHTML = `
+    <div class="rel-header">
+      <h2>Relatório de Despesas</h2>
+      <div class="sub">Edilson Lima Fotografia · @edilsonfotografo</div>
+      <div class="sub">🗺️ Maringá (PR) → Belo Horizonte (MG)</div>
+      <div class="sub">Emitido em ${agora}</div>
+    </div>
+    ${kmBloco}
+    ${blocos||'<div class="vazio"><div class="emoji">🧾</div>Nenhuma despesa registrada.</div>'}
+    ${despesas.length?`<div class="rel-total-final"><div class="label">Total a Reembolsar</div><div class="valor">${fmt(total)}</div></div>`:''}
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;line-height:1.6">
+      Profissional: Edilson Lima · @edilsonfotografo<br>Despesas referentes à prestação de serviço fotográfico.
+    </div>
+    <button class="btn-copiar" onclick="copiarRelatorio()">📋 Copiar texto para WhatsApp / E-mail</button>
+    <button class="btn-copiar" style="background:var(--olive);margin-bottom:0" onclick="exportarJSON()">💾 Exportar backup .json</button>
+    <button class="btn-cancelar" onclick="fecharRelatorio()">Fechar</button>`;
+  document.getElementById('overlay-rel').classList.add('open');
+}
+
+function fecharRelatorio() { document.getElementById('overlay-rel').classList.remove('open'); }
+function fecharRelFora(e) { if(e.target.id==='overlay-rel') fecharRelatorio(); }
+
+function copiarRelatorio() {
+  const agora  = new Date().toLocaleString('pt-BR',{dateStyle:'long',timeStyle:'short'});
+  const ini    = parseFloat(kmIni);
+  const fin    = parseFloat(kmFin);
+  const totalKm = (ini&&fin&&fin>ini)?fin-ini:null;
+  const combItems = despesas.filter(d=>d.cat==='combustivel');
+  const litEt  = combItems.filter(d=>d.combTipo==='etanol').reduce((s,d)=>s+(d.litros||0),0);
+  const litGas = combItems.filter(d=>d.combTipo==='gasolina').reduce((s,d)=>s+(d.litros||0),0);
+  const litTotal = litEt+litGas;
+  const valEt  = combItems.filter(d=>d.combTipo==='etanol').reduce((s,d)=>s+d.valor,0);
+  const valGas = combItems.filter(d=>d.combTipo==='gasolina').reduce((s,d)=>s+d.valor,0);
+  const totalValComb = combItems.reduce((s,d)=>s+d.valor,0);
+  const consEt  = calcConsumoPorTipo('etanol',totalKm,litTotal);
+  const consGas = calcConsumoPorTipo('gasolina',totalKm,litTotal);
+
+  let txt=`RELATÓRIO DE DESPESAS DE VIAGEM\n`;
+  txt+=`Edilson Lima Fotografia · @edilsonfotografo\n`;
+  txt+=`Rota: Maringá (PR) → Belo Horizonte (MG)\n`;
+  txt+=`Emitido em: ${agora}\n`;
+  txt+=`${'─'.repeat(46)}\n\n`;
+  txt+=`🛞 HODÔMETRO & CONSUMO\n`;
+  if(ini) txt+=`  KM Inicial : ${fmtKm(ini)} km\n`;
+  if(fin) txt+=`  KM Final   : ${fmtKm(fin)} km\n`;
+  if(totalKm) txt+=`  Percorridos: ${totalKm.toLocaleString('pt-BR')} km\n`;
+  if(litTotal>0) txt+=`  Abastecido : ${litTotal.toFixed(1)} L (Et: ${litEt.toFixed(1)} L | Gas: ${litGas.toFixed(1)} L)\n`;
+  if(totalValComb>0&&totalKm) txt+=`  Custo/km   : R$ ${(totalValComb/totalKm).toFixed(2)}/km\n`;
+  if(consEt)  txt+=`  🌿 Etanol  : ${consEt.toFixed(1)} km/L · ${fmt(valEt)}\n`;
+  if(consGas) txt+=`  ⛽ Gasolina: ${consGas.toFixed(1)} km/L · ${fmt(valGas)}\n`;
+  txt+=`\n`;
+  Object.entries(CATS).forEach(([key,c])=>{
+    const itens=despesas.filter(d=>d.cat===key);
+    if(!itens.length) return;
+    const sub=itens.reduce((s,d)=>s+d.valor,0);
+    txt+=`${c.icon} ${c.label.toUpperCase()}\n`;
+    itens.forEach(d=>{
+      txt+=`  • ${d.desc}${d.local?' ('+d.local+')':''}`;
+      if(d.data) txt+=` – ${fmtData(d.data)}`;
+      txt+=`  ....  ${fmt(d.valor)}\n`;
+      if(d.cat==='combustivel'){
+        const p=[];
+        if(d.combTipo) p.push(d.combTipo==='etanol'?'Etanol':'Gasolina');
+        if(d.km) p.push(fmtKm(d.km)+' km');
+        if(d.litros) p.push(d.litros.toFixed(1)+' L');
+        if(d.precoL) p.push('R$ '+d.precoL.toFixed(3)+'/L');
+        if(p.length) txt+=`    (${p.join(' · ')})\n`;
+      }
+    });
+    txt+=`  Subtotal: ${fmt(sub)}\n\n`;
+  });
+  const total=despesas.reduce((s,d)=>s+d.valor,0);
+  txt+=`${'═'.repeat(46)}\n`;
+  txt+=`TOTAL A REEMBOLSAR: ${fmt(total)}\n`;
+  txt+=`${'═'.repeat(46)}\n`;
+  txt+=`\nPrestação de serviço fotográfico contratado.\n`;
+  navigator.clipboard.writeText(txt)
+    .then(()=>mostrarToast('Copiado ✔'))
+    .catch(()=>mostrarToast('Selecione e copie manualmente'));
+}
+
+// Aviso ao sair sem exportar
+window.addEventListener('beforeunload', e => {
+  if (despesas.length > 0) {
+    e.preventDefault();
+    e.returnValue = 'Você tem despesas não exportadas. Exportar antes de sair?';
+  }
+});
+
+carregarDados();
+</script>
+</body>
+</html>
